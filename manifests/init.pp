@@ -1,11 +1,8 @@
 # Add support for postinstall file and script:
 class postinstall(
-  $command,
-  $mod_name = 'postinstall',
   $file     = undef,
   $recurse  = false,
-  $path     = $::path,
-  $vardir   = $::puppet_vardir,
+  $command,
 ) {
 
   case $::osfamily {
@@ -17,18 +14,27 @@ class postinstall(
     }
   }
 
+  $vardir  = $::puppet_vardir,
+
   if $file {
-    staging::file { $name:
-      source  => "puppet:///modules/${mod_name}/${file}",
-      # TODO: add recurse,
-      # recurse => $recurse,
+    $staging = "${vardir}/staging"
+    file { $staging:
+      ensure => directory,
+      mode   => 755,
+    }
+
+    file { "${staging}/${file}":
+      source  => "puppet:///modules/postinstall/${file}",
+      recurse => $recurse,
       before  => Exec[$name],
     }
   }
 
-  $exec_result = "${::puppet_vardir}/${name}"
+  $path = "${vardir}:${vardir}/${file}:${::path}"
 
-  exec { $name:
+  $exec_result = "${::puppet_vardir}/postinstall"
+
+  exec { postinstall:
     command   => $command,
     path      => $path,
     creates   => $exec_result,
