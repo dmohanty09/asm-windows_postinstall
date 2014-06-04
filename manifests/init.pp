@@ -1,5 +1,5 @@
 # Add support for postinstall file and script:
-class postinstall(
+class windows_postinstall(
   $windows_share = undef,
   $file          = undef,
   $recurse       = false,
@@ -7,22 +7,19 @@ class postinstall(
   $arguments     = undef,
 ) {
 
-  case $::osfamily {
-    'Windows': {
-      $exec_provider = powershell
-      if $windows_share {
-        $path = $windows_share
-      } else {
-        $path = $::path
-      }
-    }
-    default: {
-      $exec_provider = undef
-      $path = "${vardir}/staging:${vardir}/staging/${file}:${::path}"
-    }
+  if $::osfamily != 'Windows' {
+    fail('This module is only for Windows')
   }
 
-  $vardir  = $::puppet_vardir,
+  $exec_provider = powershell
+  $vardir  = $::puppet_vardir
+
+  if $windows_share {
+    $path = $windows_share
+  } else {
+    $path = $::path
+    $path = "${vardir}/staging:${vardir}/staging/${file}:${::path}"
+  }
 
   if $file {
     $staging = "${vardir}/staging"
@@ -32,9 +29,9 @@ class postinstall(
     }
 
     file { "${staging}/${file}":
-      source  => "puppet:///modules/postinstall/${file}",
+      source  => "puppet:///modules/windows_postinstall/${file}",
       recurse => $recurse,
-      before  => Exec[$name],
+      before  => Exec[postinstall],
     }
   }
 
