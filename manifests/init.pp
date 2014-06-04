@@ -1,10 +1,10 @@
 # Add support for postinstall file and script:
 class windows_postinstall(
-  $windows_share = undef,
-  $file          = undef,
-  $recurse       = false,
-  $command,
-  $arguments     = undef,
+  $share                = undef,
+  $install_command      = undef,
+  $upload_file          = undef,
+  $upload_recurse       = false,
+  $execute_file_command = undef,
 ) {
 
   if $::osfamily != 'Windows' {
@@ -13,12 +13,22 @@ class windows_postinstall(
 
   $exec_provider = powershell
   $vardir  = $::puppet_vardir
+  $exec_lck = "${vardir}/postinstall.lck"
 
-  if $windows_share {
-    $path = $windows_share
+  if $share {
+    $install_path = $share
   } else {
-    $path = $::path
-    $path = "${vardir}/staging:${vardir}/staging/${file}:${::path}"
+    $install_path = $::path
+  }
+
+  if $install_command {
+    exec { install_command: 
+      command   => $install_command,
+      path      => $install_path,
+      creates   => $exec_lck,
+      logoutput => true,
+      provider  => $exec_provider,
+    }
   }
 
   if $file {
@@ -33,14 +43,21 @@ class windows_postinstall(
       recurse => $recurse,
       before  => Exec[postinstall],
     }
+
+    if $upload_recursive {
+      $cwd = "${staging}/${file}"
+    } else {
+      $cwd = $staging
+    }
   }
 
-  $exec_result = "${::puppet_vardir}/postinstall"
+  $path = "${vardir}/staging:${vardir}/staging/${file}:${::path}"
 
   exec { postinstall:
     command   => "${command} ${arguments}",
     path      => $path,
-    creates   => $exec_result,
+    cwd       => $cwd,
+    creates   => $exec_lck,
     logoutput => true,
     provider  => $exec_provider,
   }
