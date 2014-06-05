@@ -15,6 +15,8 @@ class windows_postinstall(
   $vardir  = $::puppet_vardir
   $exec_lck = "${vardir}/postinstall.lck"
 
+  notice($exec_lck)
+
   if $share {
     $install_path = $share
   } else {
@@ -22,7 +24,7 @@ class windows_postinstall(
   }
 
   if $install_command {
-    exec { install_command: 
+    exec { install_command:
       command   => $install_command,
       path      => $install_path,
       creates   => $exec_lck,
@@ -43,18 +45,18 @@ class windows_postinstall(
       recurse => $recurse,
       before  => Exec[postinstall],
     }
-
-    if $upload_recursive {
-      $cwd = "${staging}/${file}"
-    } else {
-      $cwd = $staging
-    }
   }
 
-  $path = "${vardir}/staging:${vardir}/staging/${file}:${::path}"
+  if $upload_recursive {
+    $path = "${vardir}/staging/${file};${::path}"
+    $cwd = "${staging}/${file}"
+  } else {
+    $path = "${vardir}/staging;${::path}"
+    $cwd = $staging
+  }
 
   exec { postinstall:
-    command   => "${command} ${arguments}",
+    command   => $execute_file_command,
     path      => $path,
     cwd       => $cwd,
     creates   => $exec_lck,
@@ -62,7 +64,7 @@ class windows_postinstall(
     provider  => $exec_provider,
   }
 
-  file { $exec_result:
+  file { $exec_lck:
     ensure  => file,
     require => Exec[$name],
   }
