@@ -33,39 +33,40 @@ class windows_postinstall(
     }
   }
 
-  if $file {
-    $staging = "${vardir}/staging"
+  $staging = "${vardir}/staging"
+  if $upload_file {
     file { $staging:
       ensure => directory,
       mode   => 755,
     }
 
-    file { "${staging}/${file}":
-      source  => "puppet:///modules/windows_postinstall/${file}",
-      recurse => $recurse,
-      before  => Exec[postinstall],
+    file { "${staging}/${upload_file}":
+      source  => "puppet:///modules/windows_postinstall/${upload_file}",
+      recurse => $upload_recurse,
+      before  => Exec[$name],
     }
+    exec { $name:
+      command   => $execute_file_command,
+      path      => $path,
+      cwd       => $cwd,
+      creates   => $exec_lck,
+      logoutput => true,
+      provider  => $exec_provider,
+    }
+
+    file { $exec_lck:
+      ensure  => file,
+      require => Exec[$name],
+    }
+
   }
 
-  if $upload_recursive {
-    $path = "${vardir}/staging/${file};${::path}"
-    $cwd = "${staging}/${file}"
+  if $upload_recurse {
+    $path = "${vardir}/staging/${upload_file};${::path}"
+    $cwd = "${staging}/${upload_file}"
   } else {
     $path = "${vardir}/staging;${::path}"
     $cwd = $staging
   }
 
-  exec { postinstall:
-    command   => $execute_file_command,
-    path      => $path,
-    cwd       => $cwd,
-    creates   => $exec_lck,
-    logoutput => true,
-    provider  => $exec_provider,
-  }
-
-  file { $exec_lck:
-    ensure  => file,
-    require => Exec[$name],
-  }
 }
